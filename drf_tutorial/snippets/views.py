@@ -1,13 +1,15 @@
 from django.http import HttpResponse, HttpRequest, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.models import User
+from rest_framework import status, mixins, generics, permissions
 from rest_framework.parsers import JSONParser
-from rest_framework import status, mixins, generics
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from snippets.models import Snippet
-from snippets.serializers import SnippetSerializer
+from snippets.serializers import SnippetSerializer, UserSerializer
+from snippets.permissions import IsOwnerOrReadOnly
 
 # # Function-based views
 # @csrf_exempt
@@ -126,8 +128,24 @@ from snippets.serializers import SnippetSerializer
 class SnippetList(generics.ListCreateAPIView):
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        # Create snippet send owner value in form data but It get value from authenticated user
+        serializer.save(owner=self.request.user)
 
 
 class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+
+class UserList(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+class UserDetail(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
