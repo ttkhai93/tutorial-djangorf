@@ -141,29 +141,37 @@ class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 
-class UserList(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+# class UserList(generics.ListAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
 
 
-class UserDetail(generics.RetrieveAPIView):
+# class UserDetail(generics.RetrieveAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+
+
+from rest_framework import viewsets
+
+
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
 from rest_framework.reverse import reverse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 from rest_framework import renderers
 
 
-@api_view(["GET"])
-def api_root(request, format=None):
-    return Response(
-        {
-            "users": reverse("user-list", request=request, format=format),
-            "snippets": reverse("snippet-list", request=request, format=format),
-        }
-    )
+# @api_view(["GET"])
+# def api_root(request, format=None):
+#     return Response(
+#         {
+#             "users": reverse("user-list", request=request, format=format),
+#             "snippets": reverse("snippet-list", request=request, format=format),
+#         }
+#     )
 
 
 class SnippetHighlight(generics.GenericAPIView):
@@ -171,5 +179,27 @@ class SnippetHighlight(generics.GenericAPIView):
     renderer_classes = [renderers.StaticHTMLRenderer]
 
     def get(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)
+
+
+class SnippetViewSet(viewsets.ModelViewSet):
+    """
+    This ViewSet automatically provides `list`, `create`, `retrieve`,
+    `update` and `destroy` actions.
+
+    Additionally we also provide an extra `highlight` action.
+    """
+
+    queryset = Snippet.objects.all()
+    serializer_class = SnippetSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        # Create snippet send owner value in form data but It get value from authenticated user
+        serializer.save(owner=self.request.user)
+
+    @action(methods=["GET"], detail=True, renderer_classes=[renderers.StaticHTMLRenderer])
+    def highlight(self, request, *args, **kwargs):
         snippet = self.get_object()
         return Response(snippet.highlighted)
